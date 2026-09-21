@@ -1,17 +1,35 @@
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 pub struct Temporal;
 
 impl Temporal {
-    /// Formatuje znacznik czasu UNIX (w sekundach) według podanego wzorca.
-    pub fn format(timestamp: u64, pattern: &str) -> String {
-        let dt = DateTimeUtc::from_secs(timestamp);
+    /// Formatuje znacznik czasu UNIX podany w sekundach.
+    pub fn format(timestamp_secs: u64, pattern: &str) -> String {
+        Self::format_nanos(timestamp_secs as u128 * 1_000_000_000, pattern)
+    }
+
+    /// Formatuje znacznik czasu UNIX podany w milisekundach.
+    pub fn format_millis(timestamp_millis: u64, pattern: &str) -> String {
+        Self::format_nanos(timestamp_millis as u128 * 1_000_000, pattern)
+    }
+
+    /// Formatuje znacznik czasu UNIX podany w nanosekundach.
+    pub fn format_nanos(timestamp_nanos: u128, pattern: &str) -> String {
+        let dt = DateTimeUtc::from_total_nanos(timestamp_nanos);
         Self::replace_tokens(pattern, &dt)
+    }
+
+    /// Formatuje czas bezpośrednio ze struktury `std::time::SystemTime`.
+    pub fn format_system_time(st: SystemTime, pattern: &str) -> String {
+        let duration = st.duration_since(UNIX_EPOCH).unwrap_or(Duration::ZERO);
+        Self::format_nanos(duration.as_nanos(), pattern)
     }
 
     fn replace_tokens(pattern: &str, dt: &DateTimeUtc) -> String {
         let mut out = String::with_capacity(pattern.len() + 32);
         let mut remaining = pattern;
 
-        while !remaining.is_empty() {
+        while remaining.is_empty() == false {
             if let Some(rest) = remaining.strip_prefix("WYYY") { out.push_str(&format!("{:04}", dt.iso_year)); remaining = rest; }
             else if let Some(rest) = remaining.strip_prefix("YYYY") { out.push_str(&format!("{:04}", dt.year)); remaining = rest; }
             else if let Some(rest) = remaining.strip_prefix("hhhh") { out.push_str(&dt.hour_12_format()); remaining = rest; }
@@ -36,7 +54,6 @@ impl Temporal {
             else if let Some(rest) = remaining.strip_prefix("Q") { out.push_str(&dt.quarter().to_string()); remaining = rest; }
             else if let Some(rest) = remaining.strip_prefix("D") { out.push_str(&dt.weekday_num().to_string()); remaining = rest; }
             else {
-                // Bezpieczne, odporne na UTF-8 omijanie pojedynczego znaku bez indeksowania
                 let mut chars = remaining.chars();
                 if let Some(c) = chars.next() {
                     out.push(c);
@@ -66,7 +83,14 @@ struct DateTimeUtc {
 }
 
 impl DateTimeUtc {
-    fn from_secs(secs: u64) -> Self {
+    fn from_total_nanos(nanos_total: u128) -> Self {
+        let secs = (nanos_total / 1_000_000_000) as u64;
+        let subsec_nanos = (nanos_total % 1_000_000_000) as u64;
+
+        let millisecond = (subsec_nanos / 1_000_000) as u32;
+        let tierce = ((subsec_nanos * 60) / 1_000_000_000) as u32;
+        let quadra = (((subsec_nanos * 3600) / 1_000_000_000) % 60) as u32;
+
         let days = (secs / 86400) as i64;
         let rem_secs = (secs % 86400) as u32;
 
@@ -116,9 +140,9 @@ impl DateTimeUtc {
             hour,
             minute,
             second,
-            millisecond: 0,
-            tierce: 0,
-            quadra: 0,
+            millisecond,
+            tierce,
+            quadra,
             day_of_year: doy_calendar,
             weekday,
             iso_week,

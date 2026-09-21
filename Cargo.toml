@@ -1,6 +1,6 @@
 [package]
 name = "temporal-fmt"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jan Roman Cisowski <code@cisowscy.com>"]
 description = "A lightweight, standalone UNIX timestamp formatter with advanced seasonal and astronomical tokens."
 repository = "https://github.com/j-Cis/temporal-fmt"

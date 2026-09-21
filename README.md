@@ -8,6 +8,7 @@ A high-performance, zero-dependency UNIX timestamp formatter for Rust.
 `temporal-fmt` calculates civil, astronomical, and meteorological variables directly from a UNIX timestamp without relying on heavy external dependencies like `chrono` or `time`.
 
 ## Features
+
 - **Zero external dependencies**
 - **No heap allocations in the parsing loop** (byte-slice sliding cursor)
 - Custom format patterns including unique tags for Quarters, Astronomical Seasons, and Meteorological Seasons
@@ -16,18 +17,32 @@ A high-performance, zero-dependency UNIX timestamp formatter for Rust.
 ## Usage
 
 ```rust
+use std::time::SystemTime;
 use temporal_fmt::Temporal;
 
 fn main() {
-    // Unix timestamp representing Sept 20, 2026, 10:49:56 PM
-    let ts = 1790030996; 
-    
-    // Example: "2026-09-20 AUT Q3"
-    let formatted = Temporal::format(ts, "YYYY-MM-MD AAA QQ");
-    
-    println!("{}", formatted);
-}
+    let now = SystemTime::now();
 
+    // 1. Full high-precision timestamp with sub-second tokens
+    let formatted_precise = Temporal::format_system_time(
+        now,
+        "YYYY-MM-MD hh:mm:ss.zzz (tt:qq)"
+    );
+    println!("Precise: {}", formatted_precise);
+    // Output: Precise: 2026-09-21 14:08:45.546 (32:45)
+
+    // 2. Custom seasonal and astronomical formatting
+    let formatted_seasons = Temporal::format_system_time(
+        now,
+        "YYYY WWW D (AAA / SSS) Q"
+    );
+    println!("Seasons: {}", formatted_seasons);
+    // Output: Seasons: 2026 W39 MON (AUT / AUT) 3
+
+    // 3. Formatting from raw Unix timestamp in seconds
+    let formatted_secs = Temporal::format(1700000000, "YYYY-MM-MD hh:mm");
+    println!("From secs: {}", formatted_secs);
+}
 ```
 
 ## Available Tokens
@@ -63,7 +78,8 @@ fn main() {
 * `hh`: 2-digit Hour (00-23)
 * `mm`: 2-digit Minute (00-59)
 * `ss`: 2-digit Second (00-59)
+* `zzz` : 3-digit Millisecond (000-999)
+* `tt`: 2-digit Tierce (00-59)
+* `qq`: 2-digit Quadra (00-59)
 
-```
-
-```
+---
